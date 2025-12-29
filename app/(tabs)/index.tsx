@@ -41,6 +41,10 @@ export default function HomeScreen() {
     router.push("/settings" as any);
   };
 
+  const navigateToTermuxSetup = () => {
+    router.push("/termux-setup" as any);
+  };
+
   const openSession = (sessionId: string) => {
     router.push(`/terminal?sessionId=${sessionId}` as any);
   };
@@ -130,6 +134,23 @@ export default function HomeScreen() {
                 <View className="flex-1">
                   <Text className="text-lg font-semibold text-foreground">File Manager</Text>
                   <Text className="text-sm text-muted mt-1">Browse Linux filesystem</Text>
+                </View>
+                <IconSymbol name="chevron.right" size={24} color={colors.muted} />
+              </View>
+            </TouchableOpacity>
+
+            {/* Termux Setup Button */}
+            <TouchableOpacity
+              onPress={navigateToTermuxSetup}
+              className="bg-surface rounded-2xl p-6 border border-border active:opacity-70"
+            >
+              <View className="flex-row items-center gap-4">
+                <View className="w-12 h-12 bg-primary/10 rounded-xl items-center justify-center">
+                  <IconSymbol name="chevron.left.forwardslash.chevron.right" size={24} color={colors.primary} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-lg font-semibold text-foreground">Termux Integration</Text>
+                  <Text className="text-sm text-muted mt-1">Setup real Linux shell</Text>
                 </View>
                 <IconSymbol name="chevron.right" size={24} color={colors.muted} />
               </View>

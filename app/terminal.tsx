@@ -1,4 +1,4 @@
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Platform, Alert } from "react-native";
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Platform, Alert, Switch } from "react-native";
 import { useState, useRef, useEffect } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -7,6 +7,13 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { TerminalEmulator } from "@/lib/terminal-commands";
 import { saveSessions, loadSessions, generateId, type TerminalSession } from "@/lib/storage";
+import {
+  isTermuxInstalled,
+  executeTermuxCommand,
+  showTermuxInstallationGuide,
+  getTermuxStatus,
+  type TermuxStatus,
+} from "@/lib/termux-integration";
 
 interface CommandOutput {
   command: string;
@@ -26,6 +33,8 @@ export default function TerminalScreen() {
   const [currentSessionId] = useState(sessionId || generateId());
   const [sessionName, setSessionName] = useState(`Session ${new Date().toLocaleTimeString()}`);
   const [promptPath, setPromptPath] = useState("/home/lindroid-user");
+  const [termuxMode, setTermuxMode] = useState(false);
+  const [termuxStatus, setTermuxStatus] = useState<TermuxStatus | null>(null);
   
   const scrollViewRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
@@ -36,9 +45,16 @@ export default function TerminalScreen() {
     if (sessionId) {
       loadSession(sessionId);
     }
+    // Check Termux status
+    checkTermuxStatus();
     // Auto-focus input on mount
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
+
+  const checkTermuxStatus = async () => {
+    const status = await getTermuxStatus();
+    setTermuxStatus(status);
+  };
 
   const loadSession = async (id: string) => {
     try {
@@ -89,22 +105,34 @@ export default function TerminalScreen() {
     }
   };
 
-  const executeCommand = (cmd: string) => {
+  const executeCommand = async (cmd: string) => {
     if (!cmd.trim()) return;
 
     // Add to command history
     setCommandHistory((prev) => [...prev, cmd]);
     setHistoryIndex(-1);
 
-    // Execute command
-    const output = emulatorRef.current.executeCommand(cmd);
-    
-    // Handle clear command
-    if (output === "__CLEAR__") {
-      setHistory([]);
-      setCommand("");
-      setPromptPath(emulatorRef.current.getCurrentPath());
-      return;
+    let output = "";
+
+    if (termuxMode && termuxStatus?.installed) {
+      // Execute in Termux
+      const result = await executeTermuxCommand(cmd);
+      if (result.success) {
+        output = result.output || "Command sent to Termux";
+      } else {
+        output = `Error: ${result.error}`;
+      }
+    } else {
+      // Execute in simulated environment
+      output = emulatorRef.current.executeCommand(cmd);
+      
+      // Handle clear command
+      if (output === "__CLEAR__") {
+        setHistory([]);
+        setCommand("");
+        setPromptPath(emulatorRef.current.getCurrentPath());
+        return;
+      }
     }
 
     const newEntry: CommandOutput = {
@@ -115,7 +143,9 @@ export default function TerminalScreen() {
 
     setHistory((prev) => [...prev, newEntry]);
     setCommand("");
-    setPromptPath(emulatorRef.current.getCurrentPath());
+    if (!termuxMode) {
+      setPromptPath(emulatorRef.current.getCurrentPath());
+    }
 
     // Scroll to bottom after command execution
     setTimeout(() => {
@@ -155,21 +185,65 @@ export default function TerminalScreen() {
     }
   };
 
+  const handleTermuxModeToggle = async (value: boolean) => {
+    if (value && !termuxStatus?.installed) {
+      showTermuxInstallationGuide();
+      return;
+    }
+
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+
+    setTermuxMode(value);
+
+    const newEntry: CommandOutput = {
+      command: "",
+      output: value
+        ? "✓ Termux mode enabled - Commands will be sent to Termux app"
+        : "✓ Simulation mode - Using built-in terminal emulator",
+      timestamp: new Date(),
+    };
+    setHistory((prev) => [...prev, newEntry]);
+  };
+
   return (
     <ScreenContainer edges={["top", "left", "right"]} containerClassName="bg-[#0D1117]">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-[#30363D]">
-        <TouchableOpacity onPress={handleBack} className="active:opacity-60">
-          <IconSymbol name="chevron.left.forwardslash.chevron.right" size={24} color="#00D084" />
-        </TouchableOpacity>
-        <Text className="text-base font-semibold" style={{ color: "#E6EDF3" }}>
-          {sessionName}
-        </Text>
-        <TouchableOpacity onPress={saveSession} className="active:opacity-60">
-          <Text className="text-sm font-semibold" style={{ color: "#00D084" }}>
-            Save
+      <View className="border-b border-[#30363D]">
+        <View className="flex-row items-center justify-between px-4 py-3">
+          <TouchableOpacity onPress={handleBack} className="active:opacity-60">
+            <IconSymbol name="chevron.left.forwardslash.chevron.right" size={24} color="#00D084" />
+          </TouchableOpacity>
+          <Text className="text-base font-semibold" style={{ color: "#E6EDF3" }}>
+            {sessionName}
           </Text>
-        </TouchableOpacity>
+          <TouchableOpacity onPress={saveSession} className="active:opacity-60">
+            <Text className="text-sm font-semibold" style={{ color: "#00D084" }}>
+              Save
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Termux Mode Toggle */}
+        <View className="flex-row items-center justify-between px-4 py-2 border-t border-[#30363D]">
+          <View className="flex-1">
+            <Text className="text-sm font-medium" style={{ color: "#E6EDF3" }}>
+              Termux Mode
+            </Text>
+            <Text className="text-xs mt-1" style={{ color: "#8B949E" }}>
+              {termuxStatus?.installed
+                ? "Execute commands in real Termux shell"
+                : "Termux not installed - tap to learn more"}
+            </Text>
+          </View>
+          <Switch
+            value={termuxMode}
+            onValueChange={handleTermuxModeToggle}
+            trackColor={{ false: "#30363D", true: "#00D084" }}
+            thumbColor={termuxMode ? "#FFFFFF" : "#8B949E"}
+          />
+        </View>
       </View>
 
       {/* Terminal Output */}
@@ -185,10 +259,14 @@ export default function TerminalScreen() {
               Welcome to Lindroid Terminal Emulator
             </Text>
             <Text className="font-mono text-sm mt-1" style={{ color: "#8B949E" }}>
-              Type 'help' for available commands
+              {termuxMode
+                ? "Termux mode: Commands will be sent to Termux app"
+                : "Simulation mode: Type 'help' for available commands"}
             </Text>
             <Text className="font-mono text-sm mt-1" style={{ color: "#8B949E" }}>
-              Full Linux environment with file system simulation
+              {termuxStatus?.installed
+                ? "✓ Termux detected - Toggle Termux mode above"
+                : "⚠ Termux not installed - Using simulation mode"}
             </Text>
             <Text className="font-mono text-sm mt-1" style={{ color: "#8B949E" }}>
               {"\n"}
@@ -199,9 +277,11 @@ export default function TerminalScreen() {
         {/* Command History */}
         {history.map((entry, index) => (
           <View key={index} className="mb-3">
-            <Text className="font-mono text-sm" style={{ color: "#00D084" }}>
-              {promptPath} $ {entry.command}
-            </Text>
+            {entry.command && (
+              <Text className="font-mono text-sm" style={{ color: "#00D084" }}>
+                {termuxMode ? "termux" : promptPath} $ {entry.command}
+              </Text>
+            )}
             {entry.output && (
               <Text className="font-mono text-sm mt-1" style={{ color: "#E6EDF3" }}>
                 {entry.output}
@@ -213,7 +293,7 @@ export default function TerminalScreen() {
         {/* Current Prompt */}
         <View className="flex-row items-center">
           <Text className="font-mono text-sm" style={{ color: "#00D084" }}>
-            {promptPath} ${" "}
+            {termuxMode ? "termux" : promptPath} ${" "}
           </Text>
         </View>
       </ScrollView>
@@ -247,7 +327,7 @@ export default function TerminalScreen() {
             onChangeText={setCommand}
             onSubmitEditing={handleSubmit}
             returnKeyType="done"
-            placeholder="Enter command..."
+            placeholder={termuxMode ? "Enter Termux command..." : "Enter command..."}
             placeholderTextColor="#8B949E"
             className="flex-1 font-mono text-sm px-3 py-2 rounded-lg border"
             style={{
