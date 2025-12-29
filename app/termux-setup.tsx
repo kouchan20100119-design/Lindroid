@@ -1,7 +1,7 @@
-import { View, Text, TouchableOpacity, ScrollView, Platform, Linking } from "react-native";
 import { useState, useEffect } from "react";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { Platform, ScrollView, Text, TouchableOpacity, View, Alert } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -10,6 +10,7 @@ import {
   getTermuxStatus,
   openTermux,
   showTermuxInstallationGuide,
+  getTermuxDetectionDebugInfo,
   type TermuxStatus,
 } from "@/lib/termux-integration";
 
@@ -18,6 +19,7 @@ export default function TermuxSetupScreen() {
   const { t } = useLanguage();
   const [status, setStatus] = useState<TermuxStatus | null>(null);
   const [checking, setChecking] = useState(true);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   useEffect(() => {
     checkStatus();
@@ -54,6 +56,21 @@ export default function TermuxSetupScreen() {
     showTermuxInstallationGuide();
   };
 
+  const handleShowDebugInfo = async () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    const debugInfo = await getTermuxDetectionDebugInfo();
+    const debugText = `
+検出情報:
+- URLスキーム: ${debugInfo.urlSchemeCheck ? "✓ 検出" : "✗ 未検出"}${debugInfo.urlSchemeError ? ` (${debugInfo.urlSchemeError})` : ""}
+- ファイルシステム: ${debugInfo.fileSystemCheck ? "✓ 検出" : "✗ 未検出"}${debugInfo.fileSystemError ? ` (${debugInfo.fileSystemError})` : ""}
+- パッケージマネージャー: ${debugInfo.packageManagerCheck ? "✓ 検出" : "✗ 未検出"}${debugInfo.packageManagerError ? ` (${debugInfo.packageManagerError})` : ""}
+- タイムスタンプ: ${debugInfo.timestamp}
+    `.trim();
+    Alert.alert("デバッグ情報", debugText);
+  };
+
   const StatusIndicator = ({ active }: { active: boolean }) => (
     <View
       className="w-3 h-3 rounded-full"
@@ -79,78 +96,106 @@ export default function TermuxSetupScreen() {
       {/* Content */}
       <ScrollView className="flex-1 p-6">
         {/* Status Card */}
-        <View className="bg-surface rounded-2xl p-6 border border-border mb-6">
-          <Text className="text-xl font-bold text-foreground mb-4">{t.termuxSetup.integrationStatus}</Text>
-          
-          {checking ? (
-            <Text className="text-muted">{t.termuxSetup.checking}</Text>
-          ) : (
+        {checking ? (
+          <View className="bg-surface rounded-2xl p-6 border border-border mb-6 items-center justify-center">
+            <Text className="text-base text-muted">{t.termuxSetup.checking}</Text>
+          </View>
+        ) : status ? (
+          <View className="bg-surface rounded-2xl p-6 border border-border mb-6">
+            <Text className="text-lg font-bold text-foreground mb-4">
+              {t.termuxSetup.integrationStatus}
+            </Text>
+
             <View className="gap-3">
+              {/* Termux Installed */}
               <View className="flex-row items-center justify-between">
-                <Text className="text-base text-foreground">{t.termuxSetup.termuxInstalled}</Text>
-                <StatusIndicator active={status?.installed || false} />
+                <View className="flex-row items-center gap-2 flex-1">
+                  <StatusIndicator active={status.installed} />
+                  <Text className="text-base text-foreground">
+                    {status.installed ? t.termuxSetup.termuxInstalled : "Termuxがインストールされていません"}
+                  </Text>
+                </View>
               </View>
+
+              {/* Termux API */}
               <View className="flex-row items-center justify-between">
-                <Text className="text-base text-foreground">{t.termuxSetup.termuxAPI}</Text>
-                <StatusIndicator active={status?.apiInstalled || false} />
+                <View className="flex-row items-center gap-2 flex-1">
+                  <StatusIndicator active={status.apiInstalled} />
+                  <Text className="text-base text-foreground">
+                    {status.apiInstalled ? t.termuxSetup.termuxAPI : "Termux:APIがインストールされていません"}
+                  </Text>
+                </View>
               </View>
+
+              {/* URL Scheme */}
               <View className="flex-row items-center justify-between">
-                <Text className="text-base text-foreground">{t.termuxSetup.urlScheme}</Text>
-                <StatusIndicator active={status?.capabilities.urlScheme || false} />
+                <View className="flex-row items-center gap-2 flex-1">
+                  <StatusIndicator active={status.capabilities.urlScheme} />
+                  <Text className="text-base text-foreground">
+                    {status.capabilities.urlScheme ? t.termuxSetup.urlScheme : "URLスキームが利用できません"}
+                  </Text>
+                </View>
               </View>
+
+              {/* Command Execution */}
               <View className="flex-row items-center justify-between">
-                <Text className="text-base text-foreground">{t.termuxSetup.commandExecution}</Text>
-                <StatusIndicator active={status?.capabilities.commandExecution || false} />
+                <View className="flex-row items-center gap-2 flex-1">
+                  <StatusIndicator active={status.capabilities.commandExecution} />
+                  <Text className="text-base text-foreground">
+                    {status.capabilities.commandExecution ? t.termuxSetup.commandExecution : "コマンド実行が利用できません"}
+                  </Text>
+                </View>
               </View>
             </View>
-          )}
-        </View>
+
+            {/* Debug Button */}
+            <TouchableOpacity
+              onPress={handleShowDebugInfo}
+              className="mt-4 p-2 rounded-lg active:opacity-60"
+              style={{ backgroundColor: colors.surface }}
+            >
+              <Text className="text-xs text-muted text-center">デバッグ情報を表示</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* Action Buttons */}
-        {status?.installed ? (
-          <View className="gap-4 mb-6">
-            <TouchableOpacity
-              onPress={handleOpenTermux}
-              className="bg-primary rounded-xl py-4 active:opacity-80"
-            >
-              <Text className="text-center text-base font-semibold text-background">
-                {t.termuxSetup.openTermux}
-              </Text>
-            </TouchableOpacity>
-
-            <View className="bg-success/10 rounded-xl p-4 border border-success/30">
-              <Text className="text-sm text-foreground">
-                <Text className="font-semibold">✓ {t.termuxSetup.termuxInstalled}</Text>
-                {"\n\n"}
-                ターミナルでTermuxモードを使用して、実際のLinuxコマンドを実行できます。
-              </Text>
-            </View>
-          </View>
-        ) : (
-          <View className="gap-4 mb-6">
+        {status && !status.installed ? (
+          <View className="gap-3 mb-6">
             <TouchableOpacity
               onPress={handleInstallGuide}
-              className="bg-primary rounded-xl py-4 active:opacity-80"
+              className="bg-primary rounded-xl p-4 active:opacity-80"
             >
-              <Text className="text-center text-base font-semibold text-background">
+              <Text className="text-base font-semibold text-background text-center">
                 {t.termuxSetup.installTermux}
               </Text>
             </TouchableOpacity>
 
-            <View className="bg-warning/10 rounded-xl p-4 border border-warning/30">
-              <Text className="text-sm text-foreground">
-                <Text className="font-semibold">⚠ {t.termuxSetup.termuxNotDetected}</Text>
-                {"\n\n"}
-                {t.termuxSetup.termuxNotDetectedDesc}
-              </Text>
-            </View>
+            <TouchableOpacity
+              onPress={() => Linking.openURL("https://f-droid.org/packages/com.termux/")}
+              className="bg-surface border border-border rounded-xl p-4 active:opacity-70"
+            >
+              <View className="flex-row items-center justify-between">
+                <Text className="text-base font-medium text-foreground">F-Droidからダウンロード</Text>
+                <IconSymbol name="chevron.right" size={20} color={colors.muted} />
+              </View>
+            </TouchableOpacity>
           </View>
-        )}
+        ) : status?.installed ? (
+          <TouchableOpacity
+            onPress={handleOpenTermux}
+            className="bg-primary rounded-xl p-4 active:opacity-80 mb-6"
+          >
+            <Text className="text-base font-semibold text-background text-center">
+              {t.termuxSetup.openTermux}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
 
         {/* Setup Instructions */}
         <View className="bg-surface rounded-2xl p-6 border border-border mb-6">
           <Text className="text-lg font-bold text-foreground mb-3">{t.termuxSetup.setupInstructions}</Text>
-          
+
           <View className="gap-4">
             <View>
               <Text className="text-base font-semibold text-foreground mb-2">
@@ -176,7 +221,7 @@ export default function TermuxSetupScreen() {
                 3. ストレージアクセス (オプション)
               </Text>
               <Text className="text-sm text-muted leading-relaxed">
-                ストレージアクセス権を付下:{"\n"}
+                ストレージアクセス権を付与:{"\n"}
                 <Text className="font-mono">termux-setup-storage</Text>
               </Text>
             </View>
@@ -198,7 +243,7 @@ export default function TermuxSetupScreen() {
           <Text className="text-lg font-bold text-foreground mb-3">
             Termuxでできること
           </Text>
-          
+
           <View className="gap-2">
             <Text className="text-sm text-muted leading-relaxed">
               • 実際bash/zshシェルを実行
@@ -251,3 +296,5 @@ export default function TermuxSetupScreen() {
     </ScreenContainer>
   );
 }
+
+import { Linking } from "react-native";
