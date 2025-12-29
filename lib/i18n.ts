@@ -60,6 +60,9 @@ export interface Translations {
     fileExists: string;
     items: string;
     longPressOptions: string;
+    emptyFile: string;
+    up: string;
+    longPressHint: string;
   };
   guiViewer: {
     title: string;
@@ -188,6 +191,9 @@ export const translations: Record<Language, Translations> = {
       fileExists: "A file or directory with that name already exists",
       items: "items",
       longPressOptions: "Long press for options",
+      emptyFile: "(empty file)",
+      up: "Up",
+      longPressHint: "Long press for options",
     },
     guiViewer: {
       title: "GUI Viewer",
@@ -314,6 +320,9 @@ export const translations: Record<Language, Translations> = {
       fileExists: "その名前のファイルまたはディレクトリは既に存在します",
       items: "個のアイテム",
       longPressOptions: "長押しでオプションを表示",
+      emptyFile: "(空のファイル)",
+      up: "上へ",
+      longPressHint: "長押しでオプションを表示",
     },
     guiViewer: {
       title: "GUIビューア",

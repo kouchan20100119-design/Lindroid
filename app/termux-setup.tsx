@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useLanguage } from "@/lib/language-context";
 import {
   getTermuxStatus,
   openTermux,
@@ -14,6 +15,7 @@ import {
 
 export default function TermuxSetupScreen() {
   const colors = useColors();
+  const { t } = useLanguage();
   const [status, setStatus] = useState<TermuxStatus | null>(null);
   const [checking, setChecking] = useState(true);
 
@@ -66,10 +68,10 @@ export default function TermuxSetupScreen() {
         <TouchableOpacity onPress={handleBack} className="active:opacity-60">
           <IconSymbol name="chevron.left.forwardslash.chevron.right" size={24} color={colors.primary} />
         </TouchableOpacity>
-        <Text className="text-lg font-semibold text-foreground">Termux Setup</Text>
+        <Text className="text-lg font-semibold text-foreground">{t.termuxSetup.title}</Text>
         <TouchableOpacity onPress={checkStatus} className="active:opacity-60">
           <Text className="text-sm font-semibold" style={{ color: colors.primary }}>
-            Refresh
+            {t.common.back}
           </Text>
         </TouchableOpacity>
       </View>
@@ -78,26 +80,26 @@ export default function TermuxSetupScreen() {
       <ScrollView className="flex-1 p-6">
         {/* Status Card */}
         <View className="bg-surface rounded-2xl p-6 border border-border mb-6">
-          <Text className="text-xl font-bold text-foreground mb-4">Integration Status</Text>
+          <Text className="text-xl font-bold text-foreground mb-4">{t.termuxSetup.integrationStatus}</Text>
           
           {checking ? (
-            <Text className="text-muted">Checking Termux installation...</Text>
+            <Text className="text-muted">{t.termuxSetup.checking}</Text>
           ) : (
             <View className="gap-3">
               <View className="flex-row items-center justify-between">
-                <Text className="text-base text-foreground">Termux Installed</Text>
+                <Text className="text-base text-foreground">{t.termuxSetup.termuxInstalled}</Text>
                 <StatusIndicator active={status?.installed || false} />
               </View>
               <View className="flex-row items-center justify-between">
-                <Text className="text-base text-foreground">Termux:API</Text>
+                <Text className="text-base text-foreground">{t.termuxSetup.termuxAPI}</Text>
                 <StatusIndicator active={status?.apiInstalled || false} />
               </View>
               <View className="flex-row items-center justify-between">
-                <Text className="text-base text-foreground">URL Scheme</Text>
+                <Text className="text-base text-foreground">{t.termuxSetup.urlScheme}</Text>
                 <StatusIndicator active={status?.capabilities.urlScheme || false} />
               </View>
               <View className="flex-row items-center justify-between">
-                <Text className="text-base text-foreground">Command Execution</Text>
+                <Text className="text-base text-foreground">{t.termuxSetup.commandExecution}</Text>
                 <StatusIndicator active={status?.capabilities.commandExecution || false} />
               </View>
             </View>
@@ -112,15 +114,15 @@ export default function TermuxSetupScreen() {
               className="bg-primary rounded-xl py-4 active:opacity-80"
             >
               <Text className="text-center text-base font-semibold text-background">
-                Open Termux
+                {t.termuxSetup.openTermux}
               </Text>
             </TouchableOpacity>
 
             <View className="bg-success/10 rounded-xl p-4 border border-success/30">
               <Text className="text-sm text-foreground">
-                <Text className="font-semibold">✓ Termux is installed!</Text>
+                <Text className="font-semibold">✓ {t.termuxSetup.termuxInstalled}</Text>
                 {"\n\n"}
-                You can now use Termux mode in the terminal to execute real Linux commands.
+                ターミナルでTermuxモードを使用して、実際のLinuxコマンドを実行できます。
               </Text>
             </View>
           </View>
@@ -131,15 +133,15 @@ export default function TermuxSetupScreen() {
               className="bg-primary rounded-xl py-4 active:opacity-80"
             >
               <Text className="text-center text-base font-semibold text-background">
-                Install Termux
+                {t.termuxSetup.installTermux}
               </Text>
             </TouchableOpacity>
 
             <View className="bg-warning/10 rounded-xl p-4 border border-warning/30">
               <Text className="text-sm text-foreground">
-                <Text className="font-semibold">⚠ Termux not detected</Text>
+                <Text className="font-semibold">⚠ {t.termuxSetup.termuxNotDetected}</Text>
                 {"\n\n"}
-                Install Termux to use real Linux shell features. Tap the button above for installation guide.
+                {t.termuxSetup.termuxNotDetectedDesc}
               </Text>
             </View>
           </View>
@@ -147,44 +149,44 @@ export default function TermuxSetupScreen() {
 
         {/* Setup Instructions */}
         <View className="bg-surface rounded-2xl p-6 border border-border mb-6">
-          <Text className="text-lg font-bold text-foreground mb-3">Setup Instructions</Text>
+          <Text className="text-lg font-bold text-foreground mb-3">{t.termuxSetup.setupInstructions}</Text>
           
           <View className="gap-4">
             <View>
               <Text className="text-base font-semibold text-foreground mb-2">
-                1. Install Termux
+                {t.termuxSetup.step1}
               </Text>
               <Text className="text-sm text-muted leading-relaxed">
-                Download Termux from F-Droid (recommended) or Google Play Store. F-Droid version is more up-to-date.
+                {t.termuxSetup.step1Desc}
               </Text>
             </View>
 
             <View>
               <Text className="text-base font-semibold text-foreground mb-2">
-                2. Initial Setup
+                {t.termuxSetup.step2}
               </Text>
               <Text className="text-sm text-muted leading-relaxed">
-                Open Termux and run:{"\n"}
+                Termuxを開いて実行:{"\n"}
                 <Text className="font-mono">pkg update && pkg upgrade</Text>
               </Text>
             </View>
 
             <View>
               <Text className="text-base font-semibold text-foreground mb-2">
-                3. Storage Access (Optional)
+                3. ストレージアクセス (オプション)
               </Text>
               <Text className="text-sm text-muted leading-relaxed">
-                Grant storage permissions:{"\n"}
+                ストレージアクセス権を付下:{"\n"}
                 <Text className="font-mono">termux-setup-storage</Text>
               </Text>
             </View>
 
             <View>
               <Text className="text-base font-semibold text-foreground mb-2">
-                4. Install Termux:API (Optional)
+                4. Termux:APIをインストール (オプション)
               </Text>
               <Text className="text-sm text-muted leading-relaxed">
-                For advanced features, install Termux:API from F-Droid or Play Store, then run:{"\n"}
+                高度な機能のため、F-DroidまたはPlay StoreからTermux:APIをインストールして実行:{"\n"}
                 <Text className="font-mono">pkg install termux-api</Text>
               </Text>
             </View>
@@ -194,27 +196,27 @@ export default function TermuxSetupScreen() {
         {/* Features Card */}
         <View className="bg-surface rounded-2xl p-6 border border-border mb-6">
           <Text className="text-lg font-bold text-foreground mb-3">
-            What You Can Do with Termux
+            Termuxでできること
           </Text>
           
           <View className="gap-2">
             <Text className="text-sm text-muted leading-relaxed">
-              • Run real bash/zsh shells
+              • 実際bash/zshシェルを実行
             </Text>
             <Text className="text-sm text-muted leading-relaxed">
-              • Install packages via pkg/apt
+              • pkg/apt経由でパッケージをインストール
             </Text>
             <Text className="text-sm text-muted leading-relaxed">
-              • Use Python, Node.js, Ruby, etc.
+              • Python、Node.js、Rubyなどを使用
             </Text>
             <Text className="text-sm text-muted leading-relaxed">
-              • SSH into remote servers
+              • リモートサーバーへSSH接続
             </Text>
             <Text className="text-sm text-muted leading-relaxed">
-              • Run Git, vim, tmux, and more
+              • Git、vim、tmuxなどを実行
             </Text>
             <Text className="text-sm text-muted leading-relaxed">
-              • Access Android storage
+              • Androidストレージをアクセス
             </Text>
           </View>
         </View>
@@ -227,7 +229,7 @@ export default function TermuxSetupScreen() {
           >
             <View className="flex-row items-center justify-between">
               <Text className="text-base font-medium text-foreground">
-                Termux Documentation
+                {t.termuxSetup.documentation}
               </Text>
               <IconSymbol name="chevron.right" size={20} color={colors.muted} />
             </View>
@@ -239,7 +241,7 @@ export default function TermuxSetupScreen() {
           >
             <View className="flex-row items-center justify-between">
               <Text className="text-base font-medium text-foreground">
-                Termux Wiki
+                {t.termuxSetup.wiki}
               </Text>
               <IconSymbol name="chevron.right" size={20} color={colors.muted} />
             </View>
