@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useLanguage } from "@/lib/language-context";
 import { TerminalEmulator } from "@/lib/terminal-commands";
 import { saveSessions, loadSessions, generateId, type TerminalSession } from "@/lib/storage";
 import {
@@ -23,6 +24,7 @@ interface CommandOutput {
 
 export default function TerminalScreen() {
   const colors = useColors();
+  const { t } = useLanguage();
   const params = useLocalSearchParams();
   const sessionId = params.sessionId as string | undefined;
   
@@ -98,10 +100,10 @@ export default function TerminalScreen() {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
-      Alert.alert("Success", "Session saved successfully");
+      Alert.alert(t.common.success, t.terminal.sessionSaved);
     } catch (error) {
       console.error("Failed to save session:", error);
-      Alert.alert("Error", "Failed to save session");
+      Alert.alert(t.common.error, t.terminal.sessionSaveError);
     }
   };
 

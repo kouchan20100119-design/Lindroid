@@ -5,10 +5,12 @@ import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useLanguage } from "@/lib/language-context";
 import { loadSettings, saveSettings, type AppSettings } from "@/lib/storage";
 
 export default function SettingsScreen() {
   const colors = useColors();
+  const { t, language, setLanguage } = useLanguage();
   const [settings, setSettings] = useState<AppSettings>({
     theme: "system",
     terminalFontSize: 14,
@@ -42,15 +44,15 @@ export default function SettingsScreen() {
       }
     } catch (error) {
       console.error("Failed to save settings:", error);
-      Alert.alert("Error", "Failed to save settings");
+      Alert.alert(t.common.error, "Failed to save settings");
     }
   };
 
-  const handleBack = () => {
+  const handleLanguageChange = async (newLanguage: typeof language) => {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    router.back();
+    await setLanguage(newLanguage);
   };
 
   const SettingOption = ({
@@ -96,26 +98,33 @@ export default function SettingsScreen() {
     <ScreenContainer>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-border">
-        <TouchableOpacity onPress={handleBack} className="active:opacity-60">
-          <IconSymbol name="chevron.left.forwardslash.chevron.right" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text className="text-lg font-semibold text-foreground">Settings</Text>
+        <Text className="text-lg font-semibold text-foreground">{t.settings.title}</Text>
         <View className="w-6" />
       </View>
 
       {/* Content */}
       <ScrollView className="flex-1 p-6">
-        {/* General Settings */}
+        {/* Language Settings */}
         <View className="mb-8">
-          <Text className="text-xl font-bold text-foreground mb-4">General</Text>
+          <Text className="text-xl font-bold text-foreground mb-4">{t.settings.general}</Text>
           
           <SettingOption
-            label="Theme"
+            label={t.settings.language}
+            value={language}
+            options={[
+              { label: t.settings.english, value: "en" },
+              { label: t.settings.japanese, value: "ja" },
+            ]}
+            onSelect={handleLanguageChange}
+          />
+
+          <SettingOption
+            label={t.settings.theme}
             value={settings.theme}
             options={[
-              { label: "System", value: "system" },
-              { label: "Light", value: "light" },
-              { label: "Dark", value: "dark" },
+              { label: t.settings.system, value: "system" },
+              { label: t.settings.light, value: "light" },
+              { label: t.settings.dark, value: "dark" },
             ]}
             onSelect={(value) => updateSetting("theme", value)}
           />
@@ -123,27 +132,27 @@ export default function SettingsScreen() {
 
         {/* Terminal Settings */}
         <View className="mb-8">
-          <Text className="text-xl font-bold text-foreground mb-4">Terminal</Text>
+          <Text className="text-xl font-bold text-foreground mb-4">{t.settings.terminal}</Text>
           
           <SettingOption
-            label="Font Size"
+            label={t.settings.fontSize}
             value={settings.terminalFontSize}
             options={[
-              { label: "Small (12)", value: 12 },
-              { label: "Medium (14)", value: 14 },
-              { label: "Large (16)", value: 16 },
-              { label: "Extra Large (18)", value: 18 },
+              { label: t.settings.small, value: 12 },
+              { label: t.settings.medium, value: 14 },
+              { label: t.settings.large, value: 16 },
+              { label: t.settings.extraLarge, value: 18 },
             ]}
             onSelect={(value) => updateSetting("terminalFontSize", value)}
           />
 
           <SettingOption
-            label="Color Scheme"
+            label={t.settings.colorScheme}
             value={settings.terminalColorScheme}
             options={[
-              { label: "Default (Green)", value: "default" },
-              { label: "Blue", value: "blue" },
-              { label: "Amber", value: "amber" },
+              { label: t.settings.default, value: "default" },
+              { label: t.settings.blue, value: "blue" },
+              { label: t.settings.amber, value: "amber" },
             ]}
             onSelect={(value) => updateSetting("terminalColorScheme", value)}
           />
@@ -151,35 +160,32 @@ export default function SettingsScreen() {
 
         {/* About Section */}
         <View className="mb-8">
-          <Text className="text-xl font-bold text-foreground mb-4">About</Text>
+          <Text className="text-xl font-bold text-foreground mb-4">{t.settings.about}</Text>
           
           <View className="bg-surface rounded-2xl p-6 border border-border">
             <Text className="text-base font-semibold text-foreground mb-2">
               Lindroid
             </Text>
             <Text className="text-sm text-muted leading-relaxed">
-              Version 1.0.0
+              {t.settings.version}: 1.1.0
             </Text>
             <Text className="text-sm text-muted leading-relaxed mt-2">
-              A Linux terminal emulator with GUI support for mobile devices.
+              {t.settings.description}
             </Text>
             <Text className="text-sm text-muted leading-relaxed mt-4">
-              Features:
+              {t.settings.features}
             </Text>
             <Text className="text-sm text-muted leading-relaxed">
-              • Full terminal emulation with command history
+              • {t.terminal.welcome}
             </Text>
             <Text className="text-sm text-muted leading-relaxed">
-              • Virtual filesystem simulation
+              • {t.fileManager.emptyDirectory}
             </Text>
             <Text className="text-sm text-muted leading-relaxed">
-              • Session management
+              • {t.termuxSetup.setupInstructions}
             </Text>
             <Text className="text-sm text-muted leading-relaxed">
-              • VNC/X11 viewer support
-            </Text>
-            <Text className="text-sm text-muted leading-relaxed">
-              • File manager
+              • {t.settings.language}
             </Text>
           </View>
         </View>
@@ -187,8 +193,7 @@ export default function SettingsScreen() {
         {/* Info Note */}
         <View className="bg-primary/10 rounded-xl p-4 border border-primary/30 mb-6">
           <Text className="text-sm text-foreground">
-            <Text className="font-semibold">Note:</Text> This app provides a simulated Linux
-            environment. For full native Linux support, consider using Termux or similar solutions.
+            <Text className="font-semibold">{t.settings.note}</Text> {t.settings.noteDesc}
           </Text>
         </View>
       </ScrollView>
