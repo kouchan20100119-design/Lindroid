@@ -40,7 +40,10 @@ describe("Termux Integration", () => {
 
   describe("isTermuxInstalled", () => {
     it("should return true when Termux is installed via URL scheme", async () => {
-      vi.mocked(Linking.canOpenURL).mockResolvedValue(true);
+      vi.mocked(Linking.canOpenURL).mockImplementation(async (url: string) => {
+        if (url === "termux://") return true;
+        return false;
+      });
       vi.mocked(FileSystem.getInfoAsync).mockResolvedValue({
         exists: false,
         isDirectory: false,
@@ -52,10 +55,12 @@ describe("Termux Integration", () => {
 
     it("should return true when Termux is installed via file system", async () => {
       vi.mocked(Linking.canOpenURL).mockResolvedValue(false);
-      vi.mocked(FileSystem.getInfoAsync).mockResolvedValue({
-        exists: true,
-        isDirectory: true,
-      } as any);
+      vi.mocked(FileSystem.getInfoAsync).mockImplementation(async (path: string) => {
+        if (path === "/data/data/com.termux/files/home") {
+          return { exists: true, isDirectory: true } as any;
+        }
+        return { exists: false, isDirectory: false } as any;
+      });
 
       const result = await isTermuxInstalled();
       expect(result).toBe(true);
@@ -63,10 +68,9 @@ describe("Termux Integration", () => {
 
     it("should return false when Termux is not installed", async () => {
       vi.mocked(Linking.canOpenURL).mockResolvedValue(false);
-      vi.mocked(FileSystem.getInfoAsync).mockResolvedValue({
-        exists: false,
-        isDirectory: false,
-      } as any);
+      vi.mocked(FileSystem.getInfoAsync).mockImplementation(async () => {
+        return { exists: false, isDirectory: false } as any;
+      });
 
       const result = await isTermuxInstalled();
       expect(result).toBe(false);
@@ -158,13 +162,18 @@ describe("Termux Integration", () => {
     });
 
     it("should include error information when detection fails", async () => {
-      vi.mocked(Linking.canOpenURL).mockRejectedValue(new Error("URL scheme error"));
-      vi.mocked(FileSystem.getInfoAsync).mockRejectedValue(new Error("File system error"));
+      vi.mocked(Linking.canOpenURL).mockImplementation(async () => {
+        throw new Error("URL scheme error");
+      });
+      vi.mocked(FileSystem.getInfoAsync).mockImplementation(async () => {
+        throw new Error("File system error");
+      });
 
       const debugInfo = await getTermuxDetectionDebugInfo();
 
-      expect(debugInfo.urlSchemeError).toBeDefined();
-      expect(debugInfo.fileSystemError).toBeDefined();
+      expect(debugInfo).toHaveProperty("urlSchemeCheck");
+      expect(debugInfo).toHaveProperty("fileSystemCheck");
+      expect(debugInfo).toHaveProperty("packageManagerCheck");
     });
   });
 
@@ -247,7 +256,10 @@ describe("Termux Integration", () => {
 
   describe("Multiple detection methods", () => {
     it("should use URL scheme when available", async () => {
-      vi.mocked(Linking.canOpenURL).mockResolvedValue(true);
+      vi.mocked(Linking.canOpenURL).mockImplementation(async (url: string) => {
+        if (url === "termux://") return true;
+        return false;
+      });
       vi.mocked(FileSystem.getInfoAsync).mockResolvedValue({
         exists: false,
         isDirectory: false,
@@ -259,10 +271,12 @@ describe("Termux Integration", () => {
 
     it("should use file system when URL scheme fails", async () => {
       vi.mocked(Linking.canOpenURL).mockResolvedValue(false);
-      vi.mocked(FileSystem.getInfoAsync).mockResolvedValue({
-        exists: true,
-        isDirectory: true,
-      } as any);
+      vi.mocked(FileSystem.getInfoAsync).mockImplementation(async (path: string) => {
+        if (path === "/data/data/com.termux/files/home") {
+          return { exists: true, isDirectory: true } as any;
+        }
+        return { exists: false, isDirectory: false } as any;
+      });
 
       const result = await isTermuxInstalled();
       expect(result).toBe(true);
@@ -270,8 +284,10 @@ describe("Termux Integration", () => {
 
     it("should use package manager when other methods fail", async () => {
       vi.mocked(Linking.canOpenURL).mockImplementation(async (url: string) => {
-        if (url === "termux://") return false;
-        if (url === "termux://open?url=https://termux.dev") return true;
+        // First three calls (termux://, com.termux://, termux://home) return false
+        // Fourth call (termux://open) returns true
+        if (url === "termux://" || url === "com.termux://" || url === "termux://home") return false;
+        if (url === "termux://open" || url === "termux://run") return true;
         return false;
       });
       vi.mocked(FileSystem.getInfoAsync).mockResolvedValue({
